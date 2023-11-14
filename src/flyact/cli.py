@@ -61,13 +61,14 @@ def cmd_sessions(args: argparse.Namespace) -> None:
     np.save(args.cache / "wall_distances.npy", condensed)  # kept for the report figure
     condensed = condensed + S.frame_size_mismatch(sub)
 
+    threshold = args.threshold or S.DEFAULT_THRESHOLD
     hist, edges = np.histogram(condensed, bins=40, range=(0, 0.08))
     print("pairwise wall-signature distances (the gap separates recordings):")
     for count, edge in zip(hist, edges, strict=False):
-        mark = " <- threshold" if edge <= args.threshold < edge + 0.002 else ""
+        mark = " <- threshold" if edge <= threshold < edge + 0.002 else ""
         print(f"  {edge:.3f} {'#' * int(50 * count / hist.max())}{mark}")
 
-    sub["session"] = S.cluster_sessions(condensed, args.threshold)
+    sub["session"] = S.cluster_sessions(condensed, threshold)
     sub["cut_batch"] = S.cut_batches(sub)
     report = S.validate_against_cut_batches(sub, condensed)
     print("check against cutting batches (never used for clustering):")
@@ -137,7 +138,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("sessions", help="recover recording sessions and assign folds")
     common(p)
-    p.add_argument("--threshold", type=float, default=0.027)
+    p.add_argument("--threshold", type=float, help="wall-signature distance separating recordings")
     p.add_argument("--folds", type=int, default=5)
     p.set_defaults(func=cmd_sessions)
 

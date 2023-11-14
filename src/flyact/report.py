@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import LinearSegmentedColormap
+from sklearn.metrics import roc_auc_score
 
 from . import CLASSES
 from .index import read_manifest
@@ -129,6 +130,27 @@ def length_table(oof: pd.DataFrame, fps: float = 30.0) -> str:
     return "\n".join(lines)
 
 
+def motion_table(oof: pd.DataFrame, motion: pd.DataFrame) -> str:
+    """Clips and accuracy per class at five levels of overall motion in the crop."""
+    df = oof.merge(motion[["clip_id", "energy_mean"]], on="clip_id")
+    df["correct"] = df["pred"] == df["label"]
+    names = ["stillest fifth", "2nd", "3rd", "4th", "most motion"]
+    df["level"] = pd.qcut(df["energy_mean"], 5, labels=names)
+    lines = [
+        "| Motion in the clip | " + " | ".join(f"{c}: clips (accuracy)" for c in CLASSES) + " |",
+        "|---|" + "---|" * len(CLASSES),
+    ]
+    for level in names:
+        cells = []
+        for cls in CLASSES:
+            part = df[(df["level"] == level) & (df["label"] == cls)]
+            cells.append(f"{len(part)} ({part['correct'].mean():.0%})" if len(part) else "0")
+        lines.append(f"| {level} | " + " | ".join(cells) + " |")
+    auc = roc_auc_score(df["label"] == "pumping", -df["energy_mean"])
+    lines.append(f"\nLow motion alone separates pumping from the rest with AUC {auc:.3f}.")
+    return "\n".join(lines)
+
+
 def fig_dataset(df: pd.DataFrame, path: Path) -> None:
     """Clips per recording, split by class: the imbalance that makes random splits unsafe."""
     table = pd.crosstab(df["group"], df["label"]).sort_values(by=list(CLASSES), ascending=False)
@@ -215,7 +237,7 @@ def fig_results(summaries: dict[str, dict], path: Path) -> None:
             fontsize=9.5,
         )
     ax.set_yticks(y, [title for title, _ in rows])
-    ax.invert_yaxis()
+    ax.set_ylim(len(rows) - 0.4, -0.6)
     ax.set_xlim(0, 1.08)
     ax.set_xticks(np.arange(0, 1.01, 0.2))
     ax.xaxis.grid(True)
@@ -394,7 +416,12 @@ def run_from_args(args) -> None:
         table = results_table(summaries)
         oof_file = args.runs / MAIN_RUN / "oof.csv"
         if oof_file.exists():
-            table += "\n\n" + length_table(pd.read_csv(oof_file))
+            oof = pd.read_csv(oof_file, dtype={"clip_id": str})
+            table += "\n\n" + length_table(oof)
+            motion_file = args.cache / "motion_features.csv"
+            if motion_file.exists():
+                motion = pd.read_csv(motion_file, dtype={"clip_id": str})
+                table += "\n\n" + motion_table(oof, motion)
         (args.out / "results.md").write_text(table + "\n")
         print(table)
     if MAIN_RUN in summaries:

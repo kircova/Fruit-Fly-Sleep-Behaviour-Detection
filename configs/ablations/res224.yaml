@@ -1,0 +1,5 @@
+# Same model at the full resolution of the crop cache (224 px instead of 160 px).
+# Motivated by the error analysis: mistakes concentrate in clips where the fly barely
+# moves and the classes differ only in what the proboscis and legs are doing.
+name: tsm_triplet_224
+sampling: {image_size: 224}
