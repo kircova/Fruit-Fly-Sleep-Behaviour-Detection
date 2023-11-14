@@ -477,6 +477,9 @@ The clips were cut from recordings made for the study of sleep behaviour in *Dro
 described in A. O. B. Şapcı, *Automated Behavioral Analysis of Asleep Fruit Fly* (MSc
 thesis, Sabancı University, 2022), which introduced the
 [basty](https://github.com/bo1929/basty) pipeline and the behaviour categories used here.
-The recordings themselves are not redistributed in this repository. The temporal shift
+The clips themselves are not part of this repository. The three animations and two of
+the figures (`inputs.png`, `ambiguous.png`) show short excerpts from fewer than twenty of
+them, and `data/manifest.csv` lists every clip's file name, label and tracking statistics
+without any image data. The temporal shift
 module evaluated in the ablations is from J. Lin, C. Gan and S. Han, *TSM: Temporal Shift
 Module for Efficient Video Understanding*, ICCV 2019.
