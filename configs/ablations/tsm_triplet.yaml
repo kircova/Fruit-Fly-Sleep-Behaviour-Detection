@@ -1,0 +1,5 @@
+# Ablation: add long-range temporal modelling. Frame triplets as channels, plus the
+# temporal shift module so that snippets exchange information inside the backbone.
+name: tsm_triplet
+sampling: {input_mode: triplet}
+model: {temporal: tsm}

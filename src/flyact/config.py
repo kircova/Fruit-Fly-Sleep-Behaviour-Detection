@@ -37,7 +37,7 @@ class SamplingConfig:
 @dataclass
 class ModelConfig:
     backbone: str = "resnet18"
-    temporal: str = "tsm"  # "tsm" | "none"
+    temporal: str = "none"  # "none" | "tsm" (temporal shift between snippets)
     pretrained: bool = True
     dropout: float = 0.3
 

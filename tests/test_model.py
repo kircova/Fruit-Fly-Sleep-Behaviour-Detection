@@ -25,7 +25,8 @@ def make(temporal):
 
 
 def test_forward_shape():
-    assert make("tsm")(torch.randn(2, 4, 3, 64, 64)).shape == (2, 3)
+    for temporal in ("none", "tsm"):
+        assert make(temporal)(torch.randn(2, 4, 3, 64, 64)).shape == (2, 3)
 
 
 def test_only_the_tsm_model_is_sensitive_to_snippet_order():

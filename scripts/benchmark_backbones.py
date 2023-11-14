@@ -3,7 +3,7 @@
     python scripts/benchmark_backbones.py
 
 Times forward + backward + optimiser step on random input, in clips per second. This is
-the measurement behind the choice of a 2D backbone with temporal shift over a 3D CNN: on
+the measurement behind the choice of a 2D backbone over a 3D CNN: on
 an Apple-silicon GPU the 3D convolutions are an order of magnitude slower per clip.
 """
 
@@ -24,16 +24,17 @@ BATCH = 8
 class SnippetsAsClip(torch.nn.Module):
     """Adapter so FlyNet takes the same ``(B, 3, T, H, W)`` input as the video models."""
 
-    def __init__(self, num_snippets: int):
+    def __init__(self, num_snippets: int, temporal: str = "none"):
         super().__init__()
-        self.net = FlyNet(ModelConfig(pretrained=False), num_snippets)
+        self.net = FlyNet(ModelConfig(pretrained=False, temporal=temporal), num_snippets)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x.transpose(1, 2))
 
 
 CANDIDATES = [
-    ("ResNet-18 + temporal shift (this repo)", lambda: SnippetsAsClip(8), (8, 160)),
+    ("ResNet-18 on frame triplets (this repo)", lambda: SnippetsAsClip(8), (8, 160)),
+    ("  ... with temporal shift", lambda: SnippetsAsClip(8, "tsm"), (8, 160)),
     ("R(2+1)D-18", video.r2plus1d_18, (16, 112)),
     ("MC3-18", video.mc3_18, (16, 112)),
     ("R3D-18", video.r3d_18, (16, 112)),

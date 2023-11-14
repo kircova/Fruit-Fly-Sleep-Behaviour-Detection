@@ -1,6 +1,6 @@
 """Render the clips a run got wrong, most confident mistakes first.
 
-    python scripts/contact_sheet.py runs/tsm_triplet --out errors.jpg
+    python scripts/contact_sheet.py runs/triplet_2d --out errors.jpg
 
 Each row is one clip: six evenly spaced frames of the cached crop, annotated with the
 annotated class, the predicted class and the predicted probabilities. Looking at these

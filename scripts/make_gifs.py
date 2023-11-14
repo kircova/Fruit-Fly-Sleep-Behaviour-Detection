@@ -3,7 +3,7 @@
     FLYACT_DATA_ROOT=/path/to/clips python scripts/make_gifs.py
 
 Needs the crop cache, the manifest and the per-fold checkpoints written by
-``flyact train --config configs/tsm_triplet.yaml --set train.save_checkpoints=true``.
+``flyact train --config configs/triplet_2d.yaml --set train.save_checkpoints=true``.
 Every prediction shown comes from the fold model that never saw the clip's recording, so
 the animations show held-out behaviour, not a model replaying its training data.
 ffmpeg must be on the PATH (it writes far smaller GIFs than Pillow does).
@@ -266,7 +266,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--manifest", type=Path, default=Path("data/manifest.csv"))
     parser.add_argument("--cache", type=Path, default=Path("cache"))
-    parser.add_argument("--run", type=Path, default=Path("runs/tsm_triplet"))
+    parser.add_argument("--run", type=Path, default=Path("runs/triplet_2d"))
     parser.add_argument("--out", type=Path, default=Path("docs/media"))
     parser.add_argument("--data-root", default=os.environ.get("FLYACT_DATA_ROOT"))
     args = parser.parse_args()

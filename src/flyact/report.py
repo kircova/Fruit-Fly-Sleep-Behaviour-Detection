@@ -26,12 +26,12 @@ RUNS = [
     ("baselines/motion", "Motion statistics"),
     ("baselines/position_motion", "Position + motion statistics"),
     ("static_2d", "ResNet-18 on single frames"),
+    ("static_tsm", "ResNet-18 on single frames + temporal shift"),
     ("triplet_2d", "ResNet-18 on frame triplets"),
-    ("static_tsm", "ResNet-18 + temporal shift on single frames"),
-    ("tsm_triplet", "ResNet-18 + temporal shift on frame triplets"),
-    ("tsm_triplet_224", "The same at 224 px instead of 160 px"),
+    ("tsm_triplet", "ResNet-18 on frame triplets + temporal shift"),
+    ("triplet_2d_224", "ResNet-18 on frame triplets, 224 px instead of 160 px"),
 ]
-MAIN_RUN = "tsm_triplet"
+MAIN_RUN = "triplet_2d"
 LEAKAGE_RUN = "random_split"
 
 # Palette: three categorical hues (validated for colour-vision deficiency as a set), one

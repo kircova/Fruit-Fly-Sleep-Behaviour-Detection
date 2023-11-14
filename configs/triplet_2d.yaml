@@ -1,5 +1,5 @@
-# Main model: ResNet-18 + temporal shift on fly-centred frame triplets.
-name: tsm_triplet
+# The model: ResNet-18 on fly-centred frame triplets, snippet logits averaged.
+name: triplet_2d
 split: group
 sampling:
   num_snippets: 8      # snippets per window
@@ -10,7 +10,7 @@ sampling:
   eval_windows: 10
 model:
   backbone: resnet18
-  temporal: tsm
+  temporal: none
   pretrained: true
   dropout: 0.3
 train:

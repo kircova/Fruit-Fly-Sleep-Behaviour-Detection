@@ -1,13 +1,19 @@
-"""The classifier: a 2D ResNet that reasons over time through temporal shifts.
+"""The classifier: a 2D ResNet applied to every snippet, with snippet logits averaged.
+
+Motion enters through the input, not the architecture: each snippet is three frames
+stacked as channels (see ``config.SamplingConfig``), so an ordinary image network sees
+~130 ms of movement in every forward pass. A window of eight snippets then covers two
+seconds, and the snippet logits are averaged.
 
 Why not a 3D CNN? On the Apple-silicon GPU this project is developed on, a Kinetics
-R(2+1)D-18 trains at ~5 clips/s; this model trains at ~80 clips/s on the same input
-budget, which is the difference between one experiment a day and a full grouped
-cross-validation in under an hour. The temporal shift module (Lin et al., ICCV 2019) adds
-temporal modelling to a 2D network at zero parameters and zero FLOPs: inside every
-residual block an eighth of the channels is replaced by the same channels of the next
-snippet and another eighth by those of the previous snippet, so 3x3 spatial convolutions
-end up mixing information across time.
+R(2+1)D-18 trains at ~5 clips/s and this model at ~60, which is the difference between
+one experiment a day and a full grouped cross-validation in well under an hour.
+
+The temporal shift module (Lin et al., ICCV 2019) is available as an option. It lets
+snippets exchange information inside the backbone at zero parameters: in every residual
+block an eighth of the channels is replaced by the same channels of the next snippet and
+another eighth by those of the previous one. On this data it changed nothing measurable
+(see the ablations in the README), so it is off by default.
 """
 
 from __future__ import annotations
