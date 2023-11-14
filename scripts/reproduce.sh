@@ -10,7 +10,7 @@ flyact sessions       # recover recordings, assign folds         -> data/manifes
 
 flyact baselines                                        # no neural network
 flyact train --config configs/tsm_triplet.yaml          # the model
-for ablation in static_2d triplet_2d static_tsm random_split; do
+for ablation in static_2d triplet_2d static_tsm res224 random_split; do
   flyact train --config "configs/ablations/${ablation}.yaml"
 done
 

@@ -67,6 +67,32 @@ def bootstrap_ci(
     return {k: tuple(np.percentile(v, [2.5, 97.5]).round(4).tolist()) for k, v in draws.items()}
 
 
+def paired_difference(
+    a: pd.DataFrame, b: pd.DataFrame, metric: str = "macro_f1", n_boot: int = 2000, seed: int = 0
+) -> tuple[float, float, float]:
+    """Score of ``a`` minus score of ``b`` with a 95% interval, resampling recordings.
+
+    Both models are scored on the same resampled clips in every draw, so the interval
+    describes the difference itself and is much tighter than comparing two separate
+    intervals. An interval that contains zero means the data cannot tell the two apart.
+    """
+    b = b.set_index("clip_id").loc[a["clip_id"]].reset_index()
+    y, pred_a = _codes(a)
+    _, pred_b = _codes(b)
+    groups = a["group"].to_numpy()
+    members = [np.flatnonzero(groups == g) for g in np.unique(groups)]
+    rng = np.random.default_rng(seed)
+    draws = []
+    for _ in range(n_boot):
+        idx = np.concatenate([members[i] for i in rng.integers(0, len(members), len(members))])
+        if len(np.unique(y[idx])) < len(CLASSES):
+            continue
+        draws.append(_scores(y[idx], pred_a[idx])[metric] - _scores(y[idx], pred_b[idx])[metric])
+    point = _scores(y, pred_a)[metric] - _scores(y, pred_b)[metric]
+    lo, hi = np.percentile(draws, [2.5, 97.5])
+    return float(point), float(lo), float(hi)
+
+
 def summarize(preds: pd.DataFrame) -> dict:
     """Headline scores, per-class scores, confusion matrix and per-recording accuracy."""
     y, pred = _codes(preds)

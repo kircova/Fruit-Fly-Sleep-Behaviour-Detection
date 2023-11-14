@@ -17,6 +17,7 @@ from sklearn.metrics import roc_auc_score
 
 from . import CLASSES
 from .index import read_manifest
+from .metrics import paired_difference
 from .sessions import DEFAULT_THRESHOLD
 
 # Display name per run directory, in the order they appear in the results table.
@@ -29,6 +30,7 @@ RUNS = [
     ("triplet_2d", "ResNet-18 on frame triplets"),
     ("static_tsm", "ResNet-18 + temporal shift on single frames"),
     ("tsm_triplet", "ResNet-18 + temporal shift on frame triplets"),
+    ("tsm_triplet_224", "The same at 224 px instead of 160 px"),
 ]
 MAIN_RUN = "tsm_triplet"
 LEAKAGE_RUN = "random_split"
@@ -93,6 +95,25 @@ def load_runs(runs_dir: Path) -> dict[str, dict]:
         if summary.exists():
             found[name] = json.loads(summary.read_text())
     return found
+
+
+def difference_table(runs_dir: Path) -> str:
+    """Macro-F1 of the final model minus each other run, paired over recordings."""
+    main = runs_dir / MAIN_RUN / "oof.csv"
+    if not main.exists():
+        return ""
+    reference = pd.read_csv(main, dtype={"clip_id": str})
+    lines = [
+        "| Final model compared with | Macro-F1 difference | 95% CI (recordings) |",
+        "|---|---|---|",
+    ]
+    for name, title in RUNS:
+        other = runs_dir / name / "oof.csv"
+        if name == MAIN_RUN or name == "baselines/majority" or not other.exists():
+            continue
+        point, lo, hi = paired_difference(reference, pd.read_csv(other, dtype={"clip_id": str}))
+        lines.append(f"| {title} | {point:+.3f} | {lo:+.3f} to {hi:+.3f} |")
+    return "\n".join(lines)
 
 
 def results_table(summaries: dict[str, dict]) -> str:
@@ -413,7 +434,7 @@ def run_from_args(args) -> None:
             fig_method(df, Path(data_root).expanduser(), args.cache, figures / "method.png")
     if summaries:
         fig_results(summaries, figures / "results.png")
-        table = results_table(summaries)
+        table = results_table(summaries) + "\n\n" + difference_table(args.runs)
         oof_file = args.runs / MAIN_RUN / "oof.csv"
         if oof_file.exists():
             oof = pd.read_csv(oof_file, dtype={"clip_id": str})
