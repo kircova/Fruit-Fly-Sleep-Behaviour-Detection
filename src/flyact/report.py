@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import matplotlib
@@ -375,47 +374,6 @@ def fig_examples(df: pd.DataFrame, cache_dir: Path, path: Path, per_class: int =
     _save(fig, path)
 
 
-def fig_method(df: pd.DataFrame, data_root: Path, cache_dir: Path, path: Path) -> None:
-    """Raw frame with the tracked window, the crop, and the crop's three-frame input."""
-    from matplotlib.patches import Rectangle
-
-    from .tracking import crop_origin
-    from .video import iter_gray_frames, read_cached_frames
-
-    # A grooming fly away from the walls, so the window is not clamped to the frame edge.
-    pool = df[
-        (df["label"] == "grooming")
-        & df["n_frames"].between(150, 600)
-        & df["y_mean"].between(0.4, 0.6)
-        & df["x_mean"].between(0.35, 0.65)
-    ]
-    clip = pool.sort_values("clip_id").iloc[0]
-    t = int(clip["n_frames"]) // 2
-    raw = next(f for i, f in enumerate(iter_gray_frames(data_root / clip["rel_path"])) if i == t)
-    track = np.load(cache_dir / f"{clip['clip_id']}.npz")["track"]
-    crop = int(clip["crop_px"])
-    x0, y0 = crop_origin(track[t], crop, int(clip["width"]), int(clip["height"]))
-    frames = read_cached_frames(cache_dir / f"{clip['clip_id']}.mp4", [t - 2, t, t + 2])
-    rgb = np.stack(frames, axis=-1).astype(np.float32)
-    rgb = (rgb - rgb.min()) / (rgb.max() - rgb.min())
-
-    fig, axes = plt.subplots(1, 3, figsize=(9.6, 3.3), width_ratios=[1.375, 1, 1])
-    axes[0].imshow(raw, cmap="gray", vmin=0, vmax=255)
-    axes[0].add_patch(Rectangle((x0, y0), crop, crop, fill=False, edgecolor=BLUE, linewidth=2))
-    axes[0].set_title("1. Raw frame with the tracked window")
-    axes[1].imshow(frames[1], cmap="gray", vmin=0, vmax=255)
-    axes[1].set_title("2. Fly-centred crop")
-    axes[2].imshow(rgb)
-    axes[2].set_title("3. Three frames as R, G, B")
-    for ax in axes:
-        ax.set_xticks([])
-        ax.set_yticks([])
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-    fig.subplots_adjust(wspace=0.04)
-    _save(fig, path)
-
-
 def run_from_args(args) -> None:
     _style()
     df = read_manifest(args.manifest)
@@ -429,9 +387,6 @@ def run_from_args(args) -> None:
         fig_sessions(df, np.load(distances), DEFAULT_THRESHOLD, figures / "sessions.png")
     if (args.cache / f"{df['clip_id'].iloc[0]}.mp4").exists():
         fig_examples(df, args.cache, figures / "inputs.png")
-        data_root = args.data_root or os.environ.get("FLYACT_DATA_ROOT")
-        if data_root:
-            fig_method(df, Path(data_root).expanduser(), args.cache, figures / "method.png")
     if summaries:
         fig_results(summaries, figures / "results.png")
         table = results_table(summaries) + "\n\n" + difference_table(args.runs)

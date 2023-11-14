@@ -157,7 +157,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_baselines)
 
     p = sub.add_parser("report", help="aggregate runs into tables and figures")
-    common(p, data_root=True)
+    common(p)
     p.add_argument("--runs", type=Path, default=Path("runs"))
     p.add_argument("--out", type=Path, default=Path("docs"))
     p.set_defaults(func=cmd_report)
