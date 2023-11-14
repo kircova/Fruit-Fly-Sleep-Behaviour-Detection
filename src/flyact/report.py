@@ -374,6 +374,45 @@ def fig_examples(df: pd.DataFrame, cache_dir: Path, path: Path, per_class: int =
     _save(fig, path)
 
 
+def fig_ambiguous(
+    clips: pd.DataFrame, oof: pd.DataFrame, motion: pd.DataFrame, cache_dir: Path, path: Path
+) -> None:
+    """Still clips of one fly in one spot that carry three different annotations."""
+    from .video import read_cached_frames
+
+    df = oof.merge(motion[["clip_id", "energy_mean"]], on="clip_id")
+    df = df.merge(clips[["clip_id", "x_mean", "y_mean"]], on="clip_id")
+    still = df[df["energy_mean"] <= df["energy_mean"].quantile(0.2)]
+    # The recording whose still clips cover all three classes most evenly.
+    counts = pd.crosstab(still["group"], still["label"]).reindex(
+        columns=list(CLASSES), fill_value=0
+    )
+    still = still[still["group"] == counts.min(axis=1).idxmax()].copy()
+    # Within it, the clips closest to where the fly usually sits, so that pose and place match.
+    centre = still[["x_mean", "y_mean"]].median()
+    still["offset"] = np.hypot(
+        still["x_mean"] - centre["x_mean"], still["y_mean"] - centre["y_mean"]
+    )
+    per_class = 2
+    fig, axes = plt.subplots(1, len(CLASSES) * per_class, figsize=(9.6, 2.25))
+    column = 0
+    for cls in CLASSES:
+        for clip in still[still["label"] == cls].nsmallest(per_class, "offset").itertuples():
+            frame = read_cached_frames(cache_dir / f"{clip.clip_id}.mp4", [int(clip.n_frames) // 2])
+            ax = axes[column]
+            ax.imshow(frame[0], cmap="gray", vmin=0, vmax=255)
+            ax.set_title(f"annotated {cls}", fontsize=9, fontweight="normal", color=INK)
+            ax.set_xlabel(f"predicted {clip.pred}", fontsize=9, color=INK_2)
+            column += 1
+    for ax in axes:
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+    fig.subplots_adjust(wspace=0.04)
+    _save(fig, path)
+
+
 def run_from_args(args) -> None:
     _style()
     df = read_manifest(args.manifest)
@@ -398,6 +437,7 @@ def run_from_args(args) -> None:
             if motion_file.exists():
                 motion = pd.read_csv(motion_file, dtype={"clip_id": str})
                 table += "\n\n" + motion_table(oof, motion)
+                fig_ambiguous(df, oof, motion, args.cache, figures / "ambiguous.png")
         (args.out / "results.md").write_text(table + "\n")
         print(table)
     if MAIN_RUN in summaries:
