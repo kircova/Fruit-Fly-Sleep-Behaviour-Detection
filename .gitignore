@@ -1,0 +1,21 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+.DS_Store
+
+# Derived data and experiment outputs are reproducible and can be large.
+cache/
+runs/
+*.pt
+*.avi
+*.mp4
+!docs/**/*.mp4
+
+# Machine-specific paths live here, never in tracked files.
+configs/local.yaml
+.env

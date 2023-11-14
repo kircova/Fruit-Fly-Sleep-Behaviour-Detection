@@ -1,0 +1,4 @@
+# Ablation: short-range motion only. Frame triplets as channels, no temporal shift.
+name: triplet_2d
+sampling: {input_mode: triplet}
+model: {temporal: none}

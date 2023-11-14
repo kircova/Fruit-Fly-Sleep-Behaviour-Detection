@@ -1,0 +1,5 @@
+# Ablation: no motion information at all. Each snippet is a single frame and snippets
+# do not talk to each other, i.e. a per-frame image classifier averaged over the window.
+name: static_2d
+sampling: {input_mode: static}
+model: {temporal: none}

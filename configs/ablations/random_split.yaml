@@ -1,0 +1,5 @@
+# The main model evaluated the way such datasets usually are: clips split at random, so
+# every test clip has neighbours from the same recording in the training set.
+# This run exists to measure how much that inflates the score. Do not report it as a result.
+name: random_split
+split: random

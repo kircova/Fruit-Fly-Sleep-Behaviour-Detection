@@ -1,0 +1,4 @@
+# Ablation: long-range motion only. Single frames, temporal shift between snippets.
+name: static_tsm
+sampling: {input_mode: static}
+model: {temporal: tsm}
