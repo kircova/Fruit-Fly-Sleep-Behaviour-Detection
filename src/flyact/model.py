@@ -6,7 +6,7 @@ stacked as channels (see ``config.SamplingConfig``), so an ordinary image networ
 seconds, and the snippet logits are averaged.
 
 Why not a 3D CNN? On the Apple-silicon GPU this project is developed on, a Kinetics
-R(2+1)D-18 trains at ~5 clips/s and this model at ~60, which is the difference between
+R(2+1)D-18 trains at ~5 clips/s and this model at ~80, which is the difference between
 one experiment a day and a full grouped cross-validation in well under an hour.
 
 The temporal shift module (Lin et al., ICCV 2019) is available as an option. It lets
