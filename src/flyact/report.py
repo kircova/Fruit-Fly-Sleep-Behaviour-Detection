@@ -29,6 +29,7 @@ RUNS = [
     ("static_tsm", "ResNet-18 on single frames + temporal shift"),
     ("triplet_2d", "ResNet-18 on frame triplets"),
     ("tsm_triplet", "ResNet-18 on frame triplets + temporal shift"),
+    ("triplet_2d_seed1", "ResNet-18 on frame triplets, repeated with another seed"),
     ("triplet_2d_224", "ResNet-18 on frame triplets, 224 px instead of 160 px"),
 ]
 MAIN_RUN = "triplet_2d"
