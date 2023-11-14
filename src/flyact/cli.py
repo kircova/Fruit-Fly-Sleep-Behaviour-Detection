@@ -58,6 +58,8 @@ def cmd_sessions(args: argparse.Namespace) -> None:
     thumbs = load_thumbnails(args.cache, sub["clip_id"].tolist())
     signatures = np.stack([S.wall_signature(t) for t in thumbs])
     condensed = S.pairwise_distances(signatures, workers=args.workers)
+    np.save(args.cache / "wall_distances.npy", condensed)  # kept for the report figure
+    condensed = condensed + S.frame_size_mismatch(sub)
 
     hist, edges = np.histogram(condensed, bins=40, range=(0, 0.08))
     print("pairwise wall-signature distances (the gap separates recordings):")

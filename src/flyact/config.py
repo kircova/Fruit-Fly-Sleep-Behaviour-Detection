@@ -51,7 +51,7 @@ class TrainConfig:
     label_smoothing: float = 0.1
     warmup_epochs: float = 1.0
     augment: bool = True
-    eval_every: int = 5  # epochs between monitoring evaluations (the last epoch always runs)
+    eval_every: int = 0  # epochs between monitoring evaluations of the test fold (0 = off)
     seed: int = 0
     save_checkpoints: bool = False
 

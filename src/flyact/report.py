@@ -16,6 +16,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 from . import CLASSES
 from .index import read_manifest
+from .sessions import DEFAULT_THRESHOLD
 
 # Display name per run directory, in the order they appear in the results table.
 RUNS = [
@@ -115,6 +116,19 @@ def results_table(summaries: dict[str, dict]) -> str:
     return "\n".join(lines)
 
 
+def length_table(oof: pd.DataFrame, fps: float = 30.0) -> str:
+    """Accuracy by clip duration: do short clips, which get fewer windows, fare worse?"""
+    seconds = oof["n_frames"] / fps
+    bucket = pd.cut(
+        seconds, [0, 2, 5, 15, np.inf], labels=["< 2 s", "2 to 5 s", "5 to 15 s", "> 15 s"]
+    )
+    correct = oof["pred"] == oof["label"]
+    lines = ["| Clip length | Clips | Accuracy |", "|---|---|---|"]
+    for name, idx in correct.groupby(bucket, observed=True).groups.items():
+        lines.append(f"| {name} | {len(idx)} | {correct.loc[idx].mean():.3f} |")
+    return "\n".join(lines)
+
+
 def fig_dataset(df: pd.DataFrame, path: Path) -> None:
     """Clips per recording, split by class: the imbalance that makes random splits unsafe."""
     table = pd.crosstab(df["group"], df["label"]).sort_values(by=list(CLASSES), ascending=False)
@@ -146,6 +160,32 @@ def fig_dataset(df: pd.DataFrame, path: Path) -> None:
     ax.set_xlim(0, left.max() * 1.08)
     ax.legend(loc="lower right", ncols=3, handlelength=1.0, columnspacing=1.4)
     ax.set_title("Two recordings hold more than half of the clips; grooming appears in three")
+    _save(fig, path)
+
+
+def fig_sessions(df: pd.DataFrame, distances: np.ndarray, threshold: float, path: Path) -> None:
+    """Wall-signature distances: all pairs of clips versus pairs known to share a recording."""
+    from scipy.spatial.distance import squareform
+
+    batch = df["cut_batch"].to_numpy(dtype=float, na_value=np.nan)
+    same = squareform((batch[:, None] == batch[None, :]).astype(np.uint8), checks=False) > 0
+    bins = np.linspace(0, 0.09, 61)
+    fig, axes = plt.subplots(2, 1, figsize=(7.6, 3.9), sharex=True)
+    panels = [
+        (distances, MUTED, f"All {len(distances):,} pairs of clips"),
+        (distances[same], BLUE, f"The {int(same.sum()):,} pairs cut from a recording in one batch"),
+    ]
+    for ax, (values, color, title) in zip(axes, panels, strict=True):
+        ax.hist(values, bins=bins, color=color, edgecolor=SURFACE, linewidth=0.6)
+        ax.axvline(threshold, color=INK, linewidth=1)
+        ax.set_title(title, fontsize=10)
+        ax.set_yticks([])
+        ax.spines["left"].set_visible(False)
+    axes[0].text(
+        threshold + 0.001, axes[0].get_ylim()[1] * 0.82, "threshold", color=INK_2, fontsize=9
+    )
+    axes[1].set_xlabel("distance between chamber-wall signatures")
+    fig.subplots_adjust(hspace=0.45)
     _save(fig, path)
 
 
@@ -288,7 +328,7 @@ def fig_examples(df: pd.DataFrame, cache_dir: Path, path: Path, per_class: int =
         fontsize=9.5,
         color=INK,
     )
-    fig.subplots_adjust(wspace=0.03, hspace=0.03, top=0.9)
+    fig.subplots_adjust(wspace=0.03, hspace=0.03, top=0.9, left=0.04, right=0.995)
     _save(fig, path)
 
 
@@ -319,7 +359,7 @@ def fig_method(df: pd.DataFrame, data_root: Path, cache_dir: Path, path: Path) -
     fig, axes = plt.subplots(1, 3, figsize=(9.6, 3.3), width_ratios=[1.375, 1, 1])
     axes[0].imshow(raw, cmap="gray", vmin=0, vmax=255)
     axes[0].add_patch(Rectangle((x0, y0), crop, crop, fill=False, edgecolor=BLUE, linewidth=2))
-    axes[0].set_title(f"1. Raw frame ({clip['width']}x{clip['height']}), tracked window")
+    axes[0].set_title("1. Raw frame with the tracked window")
     axes[1].imshow(frames[1], cmap="gray", vmin=0, vmax=255)
     axes[1].set_title("2. Fly-centred crop")
     axes[2].imshow(rgb)
@@ -341,6 +381,9 @@ def run_from_args(args) -> None:
     summaries = load_runs(args.runs)
 
     fig_dataset(df, figures / "dataset.png")
+    distances = args.cache / "wall_distances.npy"
+    if distances.exists():
+        fig_sessions(df, np.load(distances), DEFAULT_THRESHOLD, figures / "sessions.png")
     if (args.cache / f"{df['clip_id'].iloc[0]}.mp4").exists():
         fig_examples(df, args.cache, figures / "inputs.png")
         data_root = args.data_root or os.environ.get("FLYACT_DATA_ROOT")
@@ -349,6 +392,9 @@ def run_from_args(args) -> None:
     if summaries:
         fig_results(summaries, figures / "results.png")
         table = results_table(summaries)
+        oof_file = args.runs / MAIN_RUN / "oof.csv"
+        if oof_file.exists():
+            table += "\n\n" + length_table(pd.read_csv(oof_file))
         (args.out / "results.md").write_text(table + "\n")
         print(table)
     if MAIN_RUN in summaries:

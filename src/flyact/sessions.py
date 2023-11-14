@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 from scipy import ndimage as ndi
 from scipy.cluster.hierarchy import fcluster, linkage
-from scipy.spatial.distance import squareform
+from scipy.spatial.distance import pdist, squareform
 from sklearn.model_selection import StratifiedGroupKFold
 
 # Width of the outer band (fraction of height / width) that holds walls and food port.
@@ -79,9 +79,33 @@ def pairwise_distances(signatures: np.ndarray, workers: int = 8) -> np.ndarray:
     return np.concatenate(rows)
 
 
-def cluster_sessions(condensed: np.ndarray, threshold: float = DEFAULT_THRESHOLD) -> np.ndarray:
-    """Average-linkage clustering; returns session numbers ordered by size (0 = largest)."""
+def frame_size_mismatch(df: pd.DataFrame) -> np.ndarray:
+    """Condensed 0/1 matrix: 1 where two clips have different frame sizes.
+
+    Added to the signature distances as a cannot-link constraint: one camera setting per
+    recording, so clips of different size were never cut from the same one.
+    """
+    size_id = df.groupby(["width", "height"]).ngroup().to_numpy()
+    return pdist(size_id[:, None], metric="hamming")
+
+
+def cluster_sessions(
+    condensed: np.ndarray, threshold: float = DEFAULT_THRESHOLD, min_size: int = 5
+) -> np.ndarray:
+    """Average-linkage clustering; returns session numbers ordered by size (0 = largest).
+
+    A handful of clips end up alone because something unusual covers the walls (the fly
+    walking along the rim, for instance). A recording with fewer than ``min_size`` clips is
+    not plausible, so those clips join the session of their nearest neighbour instead of
+    forming "recordings" of their own that could land in a different fold.
+    """
     raw = fcluster(linkage(condensed, method="average"), threshold, criterion="distance")
+    sizes = pd.Series(raw).value_counts()
+    small = np.isin(raw, sizes.index[sizes < min_size])
+    if small.any() and not small.all():
+        dist = squareform(condensed)
+        nearest = dist[np.ix_(small, ~small)].argmin(axis=1)
+        raw[small] = raw[~small][nearest]
     order = pd.Series(raw).value_counts().index
     rank = {label: i for i, label in enumerate(order)}
     return np.array([rank[label] for label in raw])
@@ -110,7 +134,7 @@ def validate_against_cut_batches(df: pd.DataFrame, condensed: np.ndarray) -> dic
         "cut_batches": int(per_batch.size),
         "batches_in_one_session": int((per_batch == 1).sum()),
         "same_batch_distance_p50": float(np.median(dist[same & upper])),
-        "same_batch_distance_p99": float(np.percentile(dist[same & upper], 99)),
+        "same_batch_distance_p90": float(np.percentile(dist[same & upper], 90)),
         "all_pairs_distance_p50": float(np.median(condensed)),
     }
 
